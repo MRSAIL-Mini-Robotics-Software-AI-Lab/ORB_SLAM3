@@ -388,3 +388,14 @@ if(realsense2_FOUND)
             Examples_old/Stereo-Inertial/stereo_inertial_realsense_D435i.cc)
     target_link_libraries(stereo_inertial_realsense_D435i_old ${PROJECT_NAME})
 endif()
+
+set(pybind11_DIR /home/nvidia/.local/lib/python3.8/site-packages/pybind11/share/cmake/pybind11)
+find_package(pybind11 REQUIRED)
+# Create the Python binding
+pybind11_add_module(orbslam3_py python_binding/binding.cpp)
+
+# Link your library with the Python binding
+target_link_libraries(orbslam3_py PRIVATE ${PROJECT_NAME})
+
+# Install the Python binding
+install(TARGETS orbslam3_py DESTINATION orbslam3)
