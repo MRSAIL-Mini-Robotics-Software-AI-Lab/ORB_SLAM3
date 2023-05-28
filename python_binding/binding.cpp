@@ -30,6 +30,19 @@ public:
         Eigen::Matrix<float, 3, 1> translation = pose.translation();
         return {translation[0], translation[1], translation[2], rot_quaternion[0], rot_quaternion[1], rot_quaternion[2], rot_quaternion[3]};
     }
+    std::vector<double> TrackStereoInertial(const cv::Mat &imLeft, const cv::Mat &imRight, const double &timestamp, std::vector<std::vector<float>> vAcc, std::vector<std::vector<float>> vGyro, std::vector<double> imu_timestamps){
+        vector<ORB_SLAM3::IMU::Point> vImuMeas;
+        for(int i = 0; i < vAcc.size(); i++){
+            vImuMeas.push_back(ORB_SLAM3::IMU::Point(vAcc[i][0], vAcc[i][1], vAcc[i][2],
+                                            vGyro[i][0], vGyro[i][1], vGyro[i][2],
+                                            imu_timestamps[i]));
+        }
+        
+        Sophus::SE3f pose = slam_system->TrackStereo(imLeft, imRight, timestamp, vImuMeas);
+        float* rot_quaternion = pose.data();
+        Eigen::Matrix<float, 3, 1> translation = pose.translation();
+        return {translation[0], translation[1], translation[2], rot_quaternion[0], rot_quaternion[1], rot_quaternion[2], rot_quaternion[3]};
+    }
     ~OrbSlam3Py(){
         delete slam_system;
     }
@@ -58,5 +71,23 @@ PYBIND11_MODULE(orbslam3_py, m) {
 
             py::gil_scoped_release release;
             return instance.TrackStereo(cvImgLeft, cvImgRight, timestamp);
+        })
+        .def("TrackStereoInertial", [](OrbSlam3Py& instance, py::array_t<uint8_t> imLeft, py::array_t<uint8_t> imRight, double timestamp,  std::vector<std::vector<float>> vAcc, std::vector<std::vector<float>> vGyro, std::vector<double> imu_timestamps){
+            py::buffer_info infoLeft = imLeft.request();
+            int heightLeft = infoLeft.shape[0];
+            int widthLeft = infoLeft.shape[1];
+            uint8_t* dataLeft =static_cast<uint8_t*>(infoLeft.ptr);
+
+            cv::Mat cvImgLeft(heightLeft, widthLeft, CV_8UC3, dataLeft);
+
+            py::buffer_info infoRight = imRight.request();
+            int heightRight = infoRight.shape[0];
+            int widthRight = infoRight.shape[1];
+            uint8_t* dataRight =static_cast<uint8_t*>(infoRight.ptr);
+
+            cv::Mat cvImgRight(heightRight, widthRight, CV_8UC3, dataRight);
+
+            py::gil_scoped_release release;
+            return instance.TrackStereoInertial(cvImgLeft, cvImgRight, timestamp, vAcc, vGyro, imu_timestamps);
         });
 }
